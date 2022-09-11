@@ -9,6 +9,9 @@ done
 
 mount -a -T /etc/fstab
 
+mkdir /lib/modules/$(uname -r)/kernel -p
+cp /tmpmod/* /lib/modules/$(uname -r)/kernel/ -r
+
 mount $root /mnt/root
 
 modprobe zram num_devices=1
