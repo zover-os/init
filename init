@@ -1,4 +1,6 @@
 #!/bin/sh
+mount -a -T /etc/fstab
+
 for param in $(cat /proc/cmdline) ; do
     case "${param}" in
         root=*)
@@ -7,7 +9,6 @@ for param in $(cat /proc/cmdline) ; do
     esac
 done
 
-mount -a -T /etc/fstab
 
 mkdir /lib/modules/$(uname -r)/kernel -p
 cp /tmpmod/* /lib/modules/$(uname -r)/kernel/ -r
@@ -16,9 +17,10 @@ mount $root /mnt/root
 
 modprobe zram num_devices=1
 echo $(du /mnt/root/rootfs.sqfs -b | cut -f1 | echo $(($(cat)+1000000))) > /sys/block/zram0/disksize
+dd if=/mnt/root/rootfs.sqfs of=/dev/zram0
 mount /dev/zram0 /mnt/zram
 
 
-mount -t overlay -o lowerdir=/mnt/zram, upperdir=/mnt/root/overlay, workdir=/mnt/root/workdir overlay /mnt/newroot
+mount -t overlay -o lowerdir=/mnt/zram,upperdir=/mnt/root/overlay,workdir=/mnt/root/workdir overlay /mnt/newroot
 
-switch_root /mnt/newroot
+exec switch_root /mnt/newroot /init
