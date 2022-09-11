@@ -20,7 +20,14 @@ echo $(du /mnt/root/rootfs.sqfs -b | cut -f1 | echo $(($(cat)+1000000))) > /sys/
 dd if=/mnt/root/rootfs.sqfs of=/dev/zram0
 mount /dev/zram0 /mnt/zram
 
+mkdir /mnt/root/addons -p
+cd /mnt/root/addons/
+for f in *; do [ -f $f ] && echo "mkdir /mnt/addons/$(echo $f | sed 's/.sqfs//g') -p; mount /mnt/root/addons/$f /mnt/addons/$(echo $f | sed 's/.sqfs//g')"; done
+cd /
 
-mount -t overlay -o lowerdir=/mnt/zram,upperdir=/mnt/root/overlay,workdir=/mnt/root/workdir overlay /mnt/newroot
+addons=$(ls /mnt/addons | xargs echo | sed 's/ /:/g')
+[ "x$addons" != "x" ] && $addons=":$addons"
+
+mount -t overlay -o lowerdir="/mnt/zram$addons",upperdir=/mnt/root/overlay,workdir=/mnt/root/workdir overlay /mnt/newroot
 
 exec switch_root /mnt/newroot /init
