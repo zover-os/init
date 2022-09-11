@@ -15,18 +15,27 @@ cp /tmpmod/* /lib/modules/$(uname -r)/kernel/ -r
 
 mount $root /mnt/root
 
-modprobe zram num_devices=1
+modprobe zram num_devices=$((1+$(ls /mnt/root/addons | wc -l)))
 echo $(du /mnt/root/rootfs.sqfs -b | cut -f1 | echo $(($(cat)+1000000))) > /sys/block/zram0/disksize
 dd if=/mnt/root/rootfs.sqfs of=/dev/zram0
 mount /dev/zram0 /mnt/zram
 
 mkdir /mnt/root/addons -p
 cd /mnt/root/addons/
-for f in *; do [ -f $f ] && echo "mkdir /mnt/addons/$(echo $f | sed 's/.sqfs//g') -p; mount /mnt/root/addons/$f /mnt/addons/$(echo $f | sed 's/.sqfs//g')"; done
+i=1
+for f in *; do if [ -f $f ]
+then
+	mkdir /mnt/addons/$(echo $f | sed 's/.sqfs//g') -p
+	echo $(du /mnt/root/addons/$f -b | cut -f1 | echo $(($(cat)+1000000))) > /sys/block/zram$i/disksize
+	dd if=/mnt/root/addons/$f of=/dev/zram$i
+	mount /dev/zram$i /mnt/addons/$(echo $f | sed 's/.sqfs//g')
+	i=$(($i+1))
+fi
+done
 cd /
 
-addons=$(ls /mnt/addons | xargs echo | sed 's/ /:/g')
-[ "x$addons" != "x" ] && $addons=":$addons"
+addons=$(ls /mnt/addons/ | xargs echo | echo "/mnt/addons/$(cat )" | sed 's/ /:\/mnt\/addons\//g')
+[ "x$addons" != "x" ] && addons=":$addons"
 
 mount -t overlay -o lowerdir="/mnt/zram$addons",upperdir=/mnt/root/overlay,workdir=/mnt/root/workdir overlay /mnt/newroot
 
